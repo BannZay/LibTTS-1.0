@@ -1,0 +1,57 @@
+name: Release
+
+# Push a tag like v1.0 (the toc version) to build the zip and create a draft release.
+# A manual run builds the zip as a workflow artifact only.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Lua 5.1
+        run: sudo apt-get update && sudo apt-get install -y lua5.1
+
+      - name: Check version
+        id: version
+        run: |
+          version=$(sed -n 's/^## *Version: *//p' LibTTS-1.0.toc | tr -d '\r')
+          [ -n "$version" ] || { echo "::error::no version in LibTTS-1.0.toc"; exit 1; }
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match toc version $version"; exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Test
+        working-directory: tests
+        run: lua5.1 test_libtts.lua
+
+      - name: Syntax check
+        run: |
+          for f in LibTTS-1.0.lua LibStub/LibStub.lua; do
+            # luac 5.1 does not skip a UTF-8 BOM, the game client does
+            sed '1s/^\xEF\xBB\xBF//' "$f" | luac5.1 -p - || { echo "::error file=$f::syntax error"; exit 1; }
+          done
+
+      - name: Package
+        run: |
+          git archive --format=zip --prefix=LibTTS-1.0/ -o LibTTS-1.0.zip HEAD \
+            LibTTS-1.0.toc LibTTS-1.0.xml LibTTS-1.0.lua LibStub docs README.md LICENSE
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LibTTS-1.0-${{ steps.version.outputs.version }}
+          path: LibTTS-1.0.zip
+
+      - name: Create draft release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" LibTTS-1.0.zip --draft --verify-tag --title "LibTTS-1.0 ${{ steps.version.outputs.version }}" --generate-notes

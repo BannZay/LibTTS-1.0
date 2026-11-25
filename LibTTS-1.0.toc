@@ -1,0 +1,8 @@
+## Interface: 30300
+## Title: LibTTS-1.0
+## Notes: Text-to-speech interface between addons that speak and addons that supply voices.
+## Author: BannZay
+## Version: 1.0
+
+LibStub\LibStub.lua
+LibTTS-1.0.xml
