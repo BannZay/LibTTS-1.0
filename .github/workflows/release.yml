@@ -54,4 +54,4 @@ jobs:
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" LibTTS-1.0.zip --draft --verify-tag --title "LibTTS-1.0 ${{ steps.version.outputs.version }}" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" LibTTS-1.0.zip --draft --verify-tag --title "LibTTS ${{ steps.version.outputs.version }}" --generate-notes
